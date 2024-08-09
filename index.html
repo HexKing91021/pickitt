@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lockpicking Game Utility</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            max-width: 100%;
+            margin: 0 auto; 
+            padding: 20px; 
+            box-sizing: border-box;
+        }
+        h1 {
+            font-size: 24px;
+            text-align: center;
+        }
+        .lock-display { 
+            height: 200px; 
+            position: relative; 
+            margin-bottom: 20px; 
+        }
+        .pin { 
+            display: inline-block; 
+            width: 40px; 
+            height: 40px; 
+            border: 1px solid #000; 
+            text-align: center; 
+            line-height: 40px; 
+            margin-right: 5px; 
+            cursor: pointer; 
+            position: absolute; 
+            top: 0;
+            transition: top 0.3s ease;
+            font-size: 18px;
+        }
+        .picked { 
+            background-color: #90EE90; 
+        }
+        .elimination-grid { 
+            display: grid; 
+            gap: 5px; 
+            grid-template-columns: repeat(5, 1fr);
+            max-width: 100%;
+            margin: 0 auto;
+        }
+        .elimination-cell { 
+            aspect-ratio: 1 / 1;
+            border: 1px solid #000; 
+            text-align: center; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 18px;
+        }
+        .eliminated { 
+            background-color: #FFA07A; 
+        }
+        .correct { 
+            background-color: #90EE90; 
+        }
+        .used {
+            opacity: 0.5;
+            background-color: #ccc;
+        }
+        #gameArea {
+            margin-top: 20px;
+        }
+        button {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+            font-size: 16px;
+        }
+        input[type="number"] {
+            width: 50px;
+            font-size: 16px;
+        }
+        @media (max-width: 480px) {
+            .pin {
+                width: 30px;
+                height: 30px;
+                line-height: 30px;
+                font-size: 16px;
+            }
+            .elimination-cell {
+                font-size: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Lockpicking Game Utility</h1>
+    
+    <div>
+        <label for="numPins">Number of pins (5-8):</label>
+        <input type="number" id="numPins" min="5" max="8" value="5">
+        <button onclick="createGame()">Create Game</button>
+    </div>
+
+    <div id="gameArea" style="display: none;">
+        <h3>Lock Display:</h3>
+        <div id="lockDisplay" class="lock-display"></div>
+        <div id="eliminationGrid" class="elimination-grid"></div>
+        <button onclick="resetGame()">Reset Game</button>
+    </div>
+
+    <script>
+        let game;
+
+        class LockpickingGame {
+            constructor(numPins) {
+                this.numPins = numPins;
+                this.sequence = [];
+                this.eliminationGrid = Array(numPins).fill().map(() => Array(numPins).fill(0));
+                // 0: unknown, 1: eliminated, 2: correct
+            }
+
+            pickPin(pin) {
+                if (!this.sequence.includes(pin)) {
+                    this.sequence.push(pin);
+                    this.updateEliminationGrid(pin);
+                    return true;
+                }
+                return false;
+            }
+
+            updateEliminationGrid(pin) {
+                const currentRow = this.sequence.length - 1;
+                for (let i = 0; i < this.numPins; i++) {
+                    if (i + 1 === pin) {
+                        this.eliminationGrid[currentRow][i] = 2; // correct
+                    } else {
+                        this.eliminationGrid[currentRow][i] = 1; // eliminated
+                    }
+                }
+                // Mark used pins as eliminated in future rows
+                for (let row = currentRow + 1; row < this.numPins; row++) {
+                    this.eliminationGrid[row][pin - 1] = 1;
+                }
+            }
+
+            toggleElimination(row, pin) {
+                if (row >= this.sequence.length) {
+                    this.eliminationGrid[row][pin] = (this.eliminationGrid[row][pin] === 1) ? 0 : 1;
+                }
+            }
+
+            reset() {
+                this.sequence = [];
+                this.eliminationGrid = Array(this.numPins).fill().map(() => Array(this.numPins).fill(0));
+            }
+        }
+
+        function createGame() {
+            const numPins = parseInt(document.getElementById('numPins').value);
+            if (numPins < 5 || numPins > 8) {
+                alert('Number of pins must be between 5 and 8.');
+                return;
+            }
+
+            game = new LockpickingGame(numPins);
+            renderLock();
+            renderEliminationGrid();
+            document.getElementById('gameArea').style.display = 'block';
+        }
+
+        function renderLock() {
+            const lockDisplay = document.getElementById('lockDisplay');
+            lockDisplay.innerHTML = '';
+            for (let i = 1; i <= game.numPins; i++) {
+                const pinElement = document.createElement('div');
+                pinElement.className = 'pin';
+                pinElement.textContent = i;
+                pinElement.style.left = `${(i - 1) * 45}px`;
+                pinElement.onclick = () => pickPin(i);
+                lockDisplay.appendChild(pinElement);
+            }
+        }
+
+        function renderEliminationGrid() {
+            const grid = document.getElementById('eliminationGrid');
+            grid.innerHTML = '';
+            grid.style.gridTemplateColumns = `repeat(${game.numPins}, 1fr)`;
+            for (let row = 0; row < game.numPins; row++) {
+                for (let pin = 0; pin < game.numPins; pin++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'elimination-cell';
+                    cell.textContent = pin + 1;
+                    cell.dataset.row = row;
+                    cell.dataset.pin = pin;
+                    cell.onclick = () => toggleElimination(row, pin);
+                    grid.appendChild(cell);
+                }
+            }
+        }
+
+        function toggleElimination(row, pin) {
+            game.toggleElimination(row, pin);
+            updateEliminationGrid();
+        }
+
+        function updateEliminationGrid() {
+            const cells = document.querySelectorAll('.elimination-cell');
+            game.eliminationGrid.forEach((row, rowIndex) => {
+                row.forEach((status, colIndex) => {
+                    const cell = cells[rowIndex * game.numPins + colIndex];
+                    cell.classList.remove('eliminated', 'correct', 'used');
+                    if (rowIndex < game.sequence.length) {
+                        if (status === 1) cell.classList.add('eliminated');
+                        else if (status === 2) cell.classList.add('correct');
+                    } else {
+                        if (status === 1) cell.classList.add('eliminated');
+                        if (game.sequence.includes(colIndex + 1)) cell.classList.add('used');
+                    }
+                });
+            });
+        }
+
+        function pickPin(pin) {
+            if (game.pickPin(pin)) {
+                updateLockDisplay();
+                updateEliminationGrid();
+            }
+        }
+
+        function updateLockDisplay() {
+            const pins = document.querySelectorAll('.pin');
+            game.sequence.forEach((pin, index) => {
+                pins[pin - 1].classList.add('picked');
+                pins[pin - 1].style.top = `${(index + 1) * 35}px`;
+            });
+        }
+
+        function resetGame() {
+            game.reset();
+            renderLock();
+            renderEliminationGrid();
+        }
+    </script>
+</body>
+</html>
