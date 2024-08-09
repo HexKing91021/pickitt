@@ -7,7 +7,7 @@
     <style>
         body { 
             font-family: Arial, sans-serif; 
-            max-width: 100%;
+            max-width: 600px;
             margin: 0 auto; 
             padding: 20px; 
             box-sizing: border-box;
@@ -41,7 +41,7 @@
         .elimination-grid { 
             display: grid; 
             gap: 5px; 
-            grid-template-columns: repeat(5, 1fr);
+            grid-template-columns: repeat(8, 1fr);
             max-width: 100%;
             margin: 0 auto;
         }
@@ -69,15 +69,18 @@
             margin-top: 20px;
         }
         button {
-            display: block;
-            width: 100%;
             padding: 10px;
-            margin-top: 10px;
+            margin: 5px;
             font-size: 16px;
+            cursor: pointer;
         }
-        input[type="number"] {
-            width: 50px;
-            font-size: 16px;
+        .pin-selector {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .pin-selector button {
+            width: 40px;
         }
         @media (max-width: 480px) {
             .pin {
@@ -95,10 +98,11 @@
 <body>
     <h1>Lockpicking Game Utility</h1>
     
-    <div>
-        <label for="numPins">Number of pins (5-8):</label>
-        <input type="number" id="numPins" min="5" max="8" value="5">
-        <button onclick="createGame()">Create Game</button>
+    <div class="pin-selector">
+        <button onclick="createGame(5)">5</button>
+        <button onclick="createGame(6)">6</button>
+        <button onclick="createGame(7)">7</button>
+        <button onclick="createGame(8)">8</button>
     </div>
 
     <div id="gameArea" style="display: none;">
@@ -116,13 +120,15 @@
                 this.numPins = numPins;
                 this.sequence = [];
                 this.eliminationGrid = Array(numPins).fill().map(() => Array(numPins).fill(0));
-                // 0: unknown, 1: eliminated, 2: correct
             }
 
             pickPin(pin) {
                 if (!this.sequence.includes(pin)) {
                     this.sequence.push(pin);
                     this.updateEliminationGrid(pin);
+                    if (this.sequence.length === this.numPins - 1) {
+                        this.autoCompleteLastPin();
+                    }
                     return true;
                 }
                 return false;
@@ -137,10 +143,25 @@
                         this.eliminationGrid[currentRow][i] = 1; // eliminated
                     }
                 }
-                // Mark used pins as eliminated in future rows
                 for (let row = currentRow + 1; row < this.numPins; row++) {
                     this.eliminationGrid[row][pin - 1] = 1;
                 }
+            }
+
+            autoCompleteLastPin() {
+                const lastPin = this.getRemainingPin();
+                if (lastPin) {
+                    this.pickPin(lastPin);
+                }
+            }
+
+            getRemainingPin() {
+                for (let i = 1; i <= this.numPins; i++) {
+                    if (!this.sequence.includes(i)) {
+                        return i;
+                    }
+                }
+                return null;
             }
 
             toggleElimination(row, pin) {
@@ -155,13 +176,7 @@
             }
         }
 
-        function createGame() {
-            const numPins = parseInt(document.getElementById('numPins').value);
-            if (numPins < 5 || numPins > 8) {
-                alert('Number of pins must be between 5 and 8.');
-                return;
-            }
-
+        function createGame(numPins) {
             game = new LockpickingGame(numPins);
             renderLock();
             renderEliminationGrid();
